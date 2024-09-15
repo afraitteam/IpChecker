@@ -1,46 +1,51 @@
 #!/bin/bash
 
-# بروزرسانی و نصب پیش‌نیازهای سیستم
-echo "Updating system packages..."
-sudo apt update -y
+# چک کردن اینکه آیا کاربر به عنوان ریشه (root) وارد شده است
+if [ "$EUID" -ne 0 ]; then
+  echo "لطفا اسکریپت را با دسترسی root اجرا کنید"
+  exit
+fi
 
-echo "Installing necessary system packages..."
-sudo apt install -y python3 python3-pip git tcpdump nmap -yf
+# بروزرسانی بسته‌ها و نصب پیش‌نیازها
+echo "Updating system and installing dependencies..."
+apt-get update
+apt-get install -y python3 python3-pip python3-venv git curl nmap tcpdump telnet
 
-# دانلود پروژه از GitHub
+# کلون کردن پروژه از GitHub
 echo "Cloning the project from GitHub..."
 git clone https://github.com/afraitteam/IpChecker.git /opt/IpChecker
 
-# وارد شدن به پوشه پروژه
-cd /opt/IpChecker
+# تغییر دایرکتوری به مسیر پروژه
+cd /opt/IpChecker || exit
 
-# نصب پیش‌نیازهای پایتون
-echo "Installing Python dependencies..."
-pip3 install -r requirements.txt
+# ایجاد محیط مجازی و نصب پکیج‌ها
+echo "Setting up Python virtual environment and installing requirements..."
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
-# ساخت سرویس systemd
+# ایجاد فایل سرویس systemd
 echo "Creating systemd service..."
 
-sudo bash -c 'cat <<EOF > /etc/systemd/system/ipchecker.service
+cat <<EOF >/etc/systemd/system/ipchecker.service
 [Unit]
 Description=IP Checker Service
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 /opt/IpChecker/app.py
-WorkingDirectory=/opt/IpChecker
-StandardOutput=inherit
-StandardError=inherit
-Restart=always
 User=root
+WorkingDirectory=/opt/IpChecker
+ExecStart=/opt/IpChecker/venv/bin/python3 /opt/IpChecker/Checker.py
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
-EOF'
+EOF
 
-# فعال‌سازی و شروع سرویس
+# راه‌اندازی و فعال کردن سرویس
 echo "Enabling and starting the service..."
-sudo systemctl enable ipchecker.service
-sudo systemctl start ipchecker.service
+systemctl daemon-reload
+systemctl enable ipchecker.service
+systemctl start ipchecker.service
 
 echo "Installation complete. The service is now running and will start on boot."
