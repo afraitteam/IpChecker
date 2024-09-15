@@ -1,3 +1,11 @@
+## Support Protocol's 
+Protocol | Status
+:------------ | :-------------
+ping | :heavy_check_mark:
+nmap | :heavy_check_mark:
+tcpdump | :heavy_check_mark:
+telnet | :heavy_check_mark:
+
 ## Install
 
 ```sh
