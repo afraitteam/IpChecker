@@ -50,5 +50,6 @@ echo "Enabling and starting the service..."
 systemctl daemon-reload
 systemctl enable ipchecker.service
 systemctl start ipchecker.service
+systemctl restart ipchecker.service
 
 echo "Installation complete. The service is now running and will start on boot."
