@@ -47,7 +47,7 @@ async def telnet_check(ip, port):
 @app.route('/check', methods=['POST'])
 async def check():
     data = request.get_json()
-    pack = data.get('pack')
+    pack = data.get('pack', 'nmap')
     ip = data.get('ip')
     port = data.get('port', 22)  # پورت پیش‌فرض 22
 
@@ -64,7 +64,12 @@ async def check():
     else:
         return jsonify({'error': 'Invalid pack'}), 400
 
-    return jsonify({pack: result})
+    # تغییر فرمت خروجی به شکل دلخواه
+    return jsonify({
+        'ip': ip,
+        'pack': pack,
+        'status': result
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
