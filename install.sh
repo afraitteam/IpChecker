@@ -2,16 +2,18 @@
 
 # چک کردن اینکه آیا کاربر به عنوان ریشه (root) وارد شده است
 if [ "$EUID" -ne 0 ]; then
-  echo "لطفا اسکریپت را با دسترسی root اجرا کنید"
+  echo "Please Run With root Account"
   exit
 fi
 
 # بروزرسانی بسته‌ها و نصب پیش‌نیازها
 echo "Updating system and installing dependencies..."
-apt-get update
-apt-get install -y python3 python3-pip python3-venv git curl nmap tcpdump telnet
+sudo apt update -y
+sudo apt upgrade -yf
+sudo apt install -y python3 python3-pip python3-venv git curl nmap tcpdump telnet
 
 # کلون کردن پروژه از GitHub
+rm -rf /opt/IpChecker
 echo "Cloning the project from GitHub..."
 git clone https://github.com/afraitteam/IpChecker.git /opt/IpChecker
 
@@ -25,6 +27,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # ایجاد فایل سرویس systemd
+rm -rf /etc/systemd/system/ipchecker.service
 echo "Creating systemd service..."
 
 cat <<EOF >/etc/systemd/system/ipchecker.service
