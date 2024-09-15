@@ -2,10 +2,10 @@
 
 # بروزرسانی و نصب پیش‌نیازهای سیستم
 echo "Updating system packages..."
-sudo apt-get update
+sudo apt update -y
 
 echo "Installing necessary system packages..."
-sudo apt-get install -y python3 python3-pip git tcpdump nmap
+sudo apt install -y python3 python3-pip git tcpdump nmap -yf
 
 # دانلود پروژه از GitHub
 echo "Cloning the project from GitHub..."
