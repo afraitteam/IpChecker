@@ -3,80 +3,68 @@ import asyncio
 import logging
 from flask import Flask, request, jsonify
 
+# تنظیمات اولیه لاگ
+logging.basicConfig(filename='ipchecker.log', level=logging.INFO, format='%(asctime)s - %(message)s')
+
 app = Flask(__name__)
 
-# تنظیمات لاگ
-logging.basicConfig(filename='ping_log.log', level=logging.INFO,
-                    format='%(asctime)s %(message)s')
-
-def ping_ip(ip, timeout=10):
+async def ping_ip(ip):
     try:
-        # اجرای دستور پینگ با subprocess و تنظیم تایم‌اوت
-        result = subprocess.run(['ping', '-c', '1', '-W', str(timeout), ip], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return result.returncode == 0
-    except Exception as e:
-        return False
-
-async def check_port(ip, port, timeout=10):
-    try:
-        # چک کردن دسترسی به پورت با استفاده از Telnet
-        proc = await asyncio.create_subprocess_exec('telnet', ip, str(port),
-                                                    stdout=subprocess.PIPE,
-                                                    stderr=subprocess.PIPE)
-        await asyncio.wait_for(proc.communicate(), timeout=timeout)
-        return proc.returncode == 0
-    except asyncio.TimeoutError:
-        return False
-
-def run_tcpdump(ip, timeout=5):
-    try:
-        # ضبط ترافیک ورودی و خروجی به مدت timeout ثانیه
-        result = subprocess.run(['timeout', str(timeout), 'tcpdump', '-n', 'host', ip], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return len(result.stdout) > 0  # اگر پکتی دریافت شده باشد، IP فعال است
-    except Exception as e:
-        return False
-
-def run_nmap(ip, port=None):
-    try:
-        # اجرای دستور nmap برای اسکن IP و پورت خاص (در صورت وجود)
-        if port:
-            result = subprocess.run(['nmap', '-p', str(port), ip], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = await asyncio.create_subprocess_shell(f'ping -c 4 {ip}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = await process.communicate()
+        if process.returncode == 0:
+            return True
         else:
-            result = subprocess.run(['nmap', ip], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        
-        return "open" in result.stdout.decode('utf-8')  # اگر پورت باز باشد، "open" در خروجی خواهد بود
+            return False
     except Exception as e:
+        logging.error(f"Ping error: {e}")
         return False
 
-@app.route('/check-ip', methods=['POST'])
-async def check_ip():
+async def nmap_scan(ip, port):
+    try:
+        process = await asyncio.create_subprocess_shell(f'nmap -p {port} {ip}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = await process.communicate()
+        if "open" in stdout.decode():
+            return True
+        else:
+            return False
+    except Exception as e:
+        logging.error(f"Nmap error: {e}")
+        return False
+
+async def telnet_check(ip, port):
+    try:
+        process = await asyncio.create_subprocess_shell(f'telnet {ip} {port}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = await process.communicate()
+        if "Escape character" in stdout.decode():
+            return True
+        else:
+            return False
+    except Exception as e:
+        logging.error(f"Telnet error: {e}")
+        return False
+
+@app.route('/check', methods=['POST'])
+async def check():
     data = request.get_json()
-    ip = data.get('ip', '')
-    port = data.get('port', None)  # پورت اختیاری
-    pack = data.get('pack', 'ping')  # انتخاب ابزار پیش‌فرض: ping
+    pack = data.get('pack')
+    ip = data.get('ip')
+    port = data.get('port', 22)  # پورت پیش‌فرض 22
 
-    if not ip:
-        return jsonify({'error': 'IP address is required'}), 400
+    if not ip or not pack:
+        return jsonify({'error': 'IP and pack are required'}), 400
 
-    # بر اساس ابزار انتخاب‌شده از کاربر
-    if pack == 'ping':
-        result = ping_ip(ip)
-    elif pack == 'tcpdump':
-        result = run_tcpdump(ip)
-    elif pack == 'nmap':
-        result = run_nmap(ip, port)
+    result = False
+    if pack == "ping":
+        result = await ping_ip(ip)
+    elif pack == "nmap":
+        result = await nmap_scan(ip, port)
+    elif pack == "telnet":
+        result = await telnet_check(ip, port)
     else:
-        return jsonify({'error': f'Unknown tool: {pack}'}), 400
+        return jsonify({'error': 'Invalid pack'}), 400
 
-    # ثبت لاگ
-    logging.info(f'IP: {ip}, Tool: {pack}, Result: {result}, Port: {port}')
-
-    return jsonify({
-        'ip': ip,
-        'tool': pack,
-        'result': result,
-        'port': port
-    })
+    return jsonify({pack: result})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)
