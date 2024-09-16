@@ -41,3 +41,50 @@ sudo systemctl enable ipchecker.service
 ```sh
 sudo systemctl disable ipchecker.service
 ```
+
+
+
+## Sample `Curl` Request
+
+```curl
+curl --location 'http://localhost:5000/check' \
+--header 'Content-Type: application/json' \
+--data '[
+    {
+        "pack": "nmap",
+        "ip": "62.133.63.185",
+        "port": 80
+    },
+    {
+        "pack": "nmap",
+        "ip": "62.133.63.185",
+        "port": 80
+    }
+]'
+```
+
+## Sample `PHP` Request
+```php
+<?php
+$client = new Client();
+$headers = [
+  'Content-Type' => 'application/json'
+];
+$body = '[
+  {
+    "pack": "nmap",
+    "ip": "62.133.63.185",
+    "port": 80
+  },
+  {
+    "pack": "nmap",
+    "ip": "62.133.63.185",
+    "port": 80
+  }
+]';
+$request = new Request('POST', 'http://37.32.25.69:5000/check', $headers, $body);
+$res = $client->sendAsync($request)->wait();
+echo $res->getBody();
+
+```
+
