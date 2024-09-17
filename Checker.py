@@ -34,8 +34,14 @@ async def nmap_scan(ip, port):
 
 async def telnet_check(ip, port):
     try:
-        process = await asyncio.create_subprocess_shell(f'telnet {ip} {port}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = await asyncio.create_subprocess_shell(
+            f'timeout 3 telnet {ip} {port}',  # timeout برای محدود کردن زمان به 3 ثانیه
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
         stdout, stderr = await process.communicate()
+        logging.info(f"Telnet output: {stdout.decode()}")
+        logging.error(f"Telnet errors: {stderr.decode()}")
         if "Escape character" in stdout.decode():
             return True
         else:
