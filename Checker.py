@@ -50,7 +50,7 @@ async def traceroute_ip(ip):
         stdout, stderr = await process.communicate()
         logging.info(f"Traceroute output: {stdout.decode()}")
         logging.error(f"Traceroute errors: {stderr.decode()}")
-        if 'traceroute' in stdout.decode():
+        if 'traceroute' in stdout.decode() or 'hops' in stdout.decode():
             return True
         else:
             return False
@@ -58,13 +58,27 @@ async def traceroute_ip(ip):
         logging.error(f"Traceroute error: {e}")
         return False
 
+async def curl_https_check(ip, port):
+    try:
+        process = await asyncio.create_subprocess_shell(f'curl -s -o /dev/null -w "%{{http_code}}" https://{ip}:{port}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = await process.communicate()
+        logging.info(f"Curl HTTPS output: {stdout.decode()}")
+        logging.error(f"Curl HTTPS errors: {stderr.decode()}")
+        # بررسی کد وضعیت HTTP
+        if stdout.decode().strip() == '200':
+            return True
+        else:
+            return False
+    except Exception as e:
+        logging.error(f"Curl HTTPS error: {e}")
+        return False
 
 @app.route('/check', methods=['POST'])
 async def check():
     data = request.get_json()
     pack = data.get('pack', 'nmap')
     ip = data.get('ip')
-    port = data.get('port', 443)  # 443
+    port = data.get('port', 443)  # پورت پیش‌فرض 443
 
     if not ip or not pack:
         return jsonify({'error': 'IP and pack are required'}), 400
@@ -78,6 +92,8 @@ async def check():
         result = await telnet_check(ip, port)
     elif pack == "traceroute":
         result = await traceroute_ip(ip)
+    elif pack == "curl_https":
+        result = await curl_https_check(ip, port)
     else:
         return jsonify({'error': 'Invalid pack'}), 400
 
