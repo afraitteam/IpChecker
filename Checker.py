@@ -61,7 +61,7 @@ async def check():
     data = request.get_json()
     pack = data.get('pack', 'nmap')
     ip = data.get('ip')
-    port = data.get('port', 22)  # پورت پیش‌فرض 22
+    port = data.get('port', 443)  # 443
 
     if not ip or not pack:
         return jsonify({'error': 'IP and pack are required'}), 400
