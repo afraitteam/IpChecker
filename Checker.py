@@ -48,6 +48,8 @@ async def traceroute_ip(ip):
     try:
         process = await asyncio.create_subprocess_shell(f'traceroute -m 5 {ip}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = await process.communicate()
+        logging.info(f"Traceroute output: {stdout.decode()}")
+        logging.error(f"Traceroute errors: {stderr.decode()}")
         if 'traceroute' in stdout.decode():
             return True
         else:
@@ -55,6 +57,7 @@ async def traceroute_ip(ip):
     except Exception as e:
         logging.error(f"Traceroute error: {e}")
         return False
+
 
 @app.route('/check', methods=['POST'])
 async def check():
