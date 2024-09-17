@@ -10,7 +10,7 @@ fi
 echo "Updating system and installing dependencies..."
 sudo apt update -y
 sudo apt upgrade -yf
-sudo apt install -y python3 python3-pip python3-venv git curl nmap tcpdump telnet
+sudo apt install -y python3 python3-pip python3-venv git curl nmap tcpdump telnet traceroute
 
 # کلون کردن پروژه از GitHub
 rm -rf /opt/IpChecker
