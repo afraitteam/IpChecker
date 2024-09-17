@@ -44,12 +44,24 @@ async def telnet_check(ip, port):
         logging.error(f"Telnet error: {e}")
         return False
 
+async def traceroute_ip(ip):
+    try:
+        process = await asyncio.create_subprocess_shell(f'traceroute -m 5 {ip}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = await process.communicate()
+        if 'traceroute' in stdout.decode():
+            return True
+        else:
+            return False
+    except Exception as e:
+        logging.error(f"Traceroute error: {e}")
+        return False
+
 @app.route('/check', methods=['POST'])
 async def check():
     data = request.get_json()
     pack = data.get('pack', 'nmap')
     ip = data.get('ip')
-    port = data.get('port', 443)  # پورت پیش‌فرض 22
+    port = data.get('port', 22)  # پورت پیش‌فرض 22
 
     if not ip or not pack:
         return jsonify({'error': 'IP and pack are required'}), 400
@@ -61,6 +73,8 @@ async def check():
         result = await nmap_scan(ip, port)
     elif pack == "telnet":
         result = await telnet_check(ip, port)
+    elif pack == "traceroute":
+        result = await traceroute_ip(ip)
     else:
         return jsonify({'error': 'Invalid pack'}), 400
 
