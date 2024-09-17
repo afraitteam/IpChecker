@@ -24,10 +24,10 @@ sudo systemctl start ipchecker.service
 sudo systemctl stop ipchecker.service
 ```
 
-## Stop Service
+## Restart Service
 
 ```sh
-sudo systemctl status ipchecker.service
+sudo systemctl restart ipchecker.service
 ```
 
 ## Enable Auto Run Service
