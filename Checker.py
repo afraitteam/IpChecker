@@ -44,6 +44,24 @@ async def telnet_check(ip, port):
         logging.error(f"Telnet error: {e}")
         return False
 
+async def nc_check(ip, port):
+    try:
+        process = await asyncio.create_subprocess_shell(
+            f'nc -zv -w 5 {ip} {port}',  # -z برای بررسی فقط اتصال، -v برای نمایش جزئیات، -w 5 برای timeout 5 ثانیه
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        logging.info(f"NC check output: {stdout.decode()}")
+        logging.error(f"NC check errors: {stderr.decode()}")
+        if "succeeded" in stdout.decode() or "open" in stdout.decode():
+            return True
+        else:
+            return False
+    except Exception as e:
+        logging.error(f"NC check error: {e}")
+        return False
+
 async def traceroute_ip(ip):
     try:
         process = await asyncio.create_subprocess_shell(f'traceroute -m 5 {ip}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -90,6 +108,8 @@ async def check():
         result = await nmap_scan(ip, port)
     elif pack == "telnet":
         result = await telnet_check(ip, port)
+    elif pack == "nc":
+        result = await nc_check(ip, port)
     elif pack == "traceroute":
         result = await traceroute_ip(ip)
     elif pack == "curl_https":
