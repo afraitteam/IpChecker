@@ -82,9 +82,52 @@ $body = '[
     "port": 80
   }
 ]';
-$request = new Request('POST', 'http://37.32.25.69:5000/check', $headers, $body);
+$request = new Request('POST', 'http://localhost:5000/check', $headers, $body);
 $res = $client->sendAsync($request)->wait();
 echo $res->getBody();
+```
 
+
+
+## Sample `Curl` Request All Services
+
+```curl
+curl --location 'http://localhost:5000/check_all' \
+--header 'Content-Type: application/json' \
+--data '[
+    {
+        "pack": "nmap",
+        "ip": "62.133.63.185",
+        "port": 80
+    },
+    {
+        "pack": "nmap",
+        "ip": "62.133.63.185",
+        "port": 80
+    }
+]'
+```
+
+
+## Sample `PHP` Request All Services
+```php
+<?php
+$client = new Client();
+$headers = [
+  'Content-Type' => 'application/json'
+];
+$body = '[
+  {
+    "ip": "62.133.63.185",
+    "port": 80
+  },
+  {
+    "ip": "62.133.63.185",
+    "port": 80
+  }
+]';
+$request = new Request('POST', 'http://localhost:5000/check_all', $headers, $body);
+$res = $client->sendAsync($request)->wait();
+echo $res->getBody();
 ```
 
