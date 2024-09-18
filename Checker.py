@@ -1,101 +1,57 @@
 import subprocess
 import asyncio
 import logging
-from flask import Flask, request, jsonify
+from quart import Quart, request, jsonify
 
 # تنظیمات اولیه لاگ
 logging.basicConfig(filename='ipchecker.log', level=logging.INFO, format='%(asctime)s - %(message)s')
 
-app = Flask(__name__)
+app = Quart(__name__)
+
+async def run_command(command):
+    try:
+        process = await asyncio.create_subprocess_shell(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = await process.communicate()
+        logging.info(f"Command output: {stdout.decode()}")
+        logging.error(f"Command errors: {stderr.decode()}")
+        return stdout.decode(), stderr.decode(), process.returncode
+    except Exception as e:
+        logging.error(f"Command error: {e}")
+        return '', str(e), -1
 
 async def ping_ip(ip, timeout):
-    try:
-        process = await asyncio.create_subprocess_shell(f'timeout {timeout} ping -c 4 {ip}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = await process.communicate()
-        logging.info(f"Ping output: {stdout.decode()}")
-        logging.error(f"Ping errors: {stderr.decode()}")
-        if process.returncode == 0:
-            return True
-        else:
-            return False
-    except Exception as e:
-        logging.error(f"Ping error: {e}")
-        return False
+    command = f'timeout {timeout} ping -c 4 {ip}'
+    stdout, stderr, returncode = await run_command(command)
+    return returncode == 0
 
 async def nmap_scan(ip, port, timeout):
-    try:
-        process = await asyncio.create_subprocess_shell(f'timeout {timeout} nmap -p {port} {ip}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = await process.communicate()
-        logging.info(f"Nmap output: {stdout.decode()}")
-        logging.error(f"Nmap errors: {stderr.decode()}")
-        if "open" in stdout.decode():
-            return True
-        else:
-            return False
-    except Exception as e:
-        logging.error(f"Nmap error: {e}")
-        return False
+    command = f'timeout {timeout} nmap -p {port} {ip}'
+    stdout, stderr, returncode = await run_command(command)
+    return "open" in stdout
 
 async def telnet_check(ip, port, timeout):
-    try:
-        process = await asyncio.create_subprocess_shell(f'timeout {timeout} telnet {ip} {port}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = await process.communicate()
-        logging.info(f"Telnet output: {stdout.decode()}")
-        logging.error(f"Telnet errors: {stderr.decode()}")
-        if "Escape character" in stdout.decode():
-            return True
-        else:
-            return False
-    except Exception as e:
-        logging.error(f"Telnet error: {e}")
-        return False
+    command = f'timeout {timeout} telnet {ip} {port}'
+    stdout, stderr, returncode = await run_command(command)
+    return "Escape character" in stdout
 
 async def nc_check(ip, port, timeout):
-    try:
-        process = await asyncio.create_subprocess_shell(f'timeout {timeout} nc -zv -w {timeout} {ip} {port}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = await process.communicate()
-        logging.info(f"NC check output: {stdout.decode()}")
-        logging.error(f"NC check errors: {stderr.decode()}")
-        if "succeeded" in stdout.decode() or "open" in stdout.decode():
-            return True
-        else:
-            return False
-    except Exception as e:
-        logging.error(f"NC check error: {e}")
-        return False
+    command = f'timeout {timeout} nc -zv -w {timeout} {ip} {port}'
+    stdout, stderr, returncode = await run_command(command)
+    return "succeeded" in stdout or "open" in stdout
 
 async def traceroute_ip(ip, timeout):
-    try:
-        process = await asyncio.create_subprocess_shell(f'timeout {timeout} traceroute -m 5 {ip}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = await process.communicate()
-        logging.info(f"Traceroute output: {stdout.decode()}")
-        logging.error(f"Traceroute errors: {stderr.decode()}")
-        if 'traceroute' in stdout.decode() or 'hops' in stdout.decode():
-            return True
-        else:
-            return False
-    except Exception as e:
-        logging.error(f"Traceroute error: {e}")
-        return False
+    command = f'timeout {timeout} traceroute -m 5 {ip}'
+    stdout, stderr, returncode = await run_command(command)
+    return 'traceroute' in stdout or 'hops' in stdout
 
 async def curl_https_check(ip, port, timeout):
-    try:
-        process = await asyncio.create_subprocess_shell(f'timeout {timeout} curl -s -o /dev/null -w "%{{http_code}}" https://{ip}:{port}', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = await process.communicate()
-        logging.info(f"Curl HTTPS output: {stdout.decode()}")
-        logging.error(f"Curl HTTPS errors: {stderr.decode()}")
-        if stdout.decode().strip() == '200':
-            return True
-        else:
-            return False
-    except Exception as e:
-        logging.error(f"Curl HTTPS error: {e}")
-        return False
+    command = f'timeout {timeout} curl -s -o /dev/null -w "%{{http_code}}" https://{ip}:{port}'
+    stdout, stderr, returncode = await run_command(command)
+    return stdout.strip() == '200'
 
-# روت برای چک کردن همه متدها به صورت همزمان
 @app.route('/check_all', methods=['POST'])
 async def check_all():
-    data = request.get_json()
+    data = await request.get_json()
     ip = data.get('ip')
     port = data.get('port', 443)  # پورت پیش‌فرض 443
     timeout = data.get('timeout', 2)  # زمان انتظار پیش‌فرض 2 ثانیه
