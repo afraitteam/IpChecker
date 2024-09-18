@@ -1,2 +1,4 @@
-flask[async]
-quart
+flask==3.0.3
+quart==0.19.6
+aiofiles==24.1.0
+hypercorn==0.17.3
