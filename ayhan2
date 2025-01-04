@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 
 // مقادیر پیش‌فرض
-define('DEFAULT_PORT', 4433);
+define('DEFAULT_PORT', 443);
 define('DEFAULT_SECRET', "00000000000000000000000000000000");
 define('DEFAULT_TAG', "aeb06f0c145f9e941ec4b0e782d7e600");
 define('DEFAULT_NAME', "MTProxy");
