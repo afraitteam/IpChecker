@@ -34,11 +34,18 @@ if (!$PUBLIC_IP) {
     sendResponse("error", "دریافت IP عمومی با شکست مواجه شد.");
 }
 
-// حذف جلسه‌های قبلی
-exec("screen -X -S $NAME quit", $output, $status);
-if ($status !== 0) {
-    error_log("خطا در حذف جلسه قبلی: $NAME");
-    sendResponse("error", "خطا در حذف جلسه قبلی.", ["session" => $NAME, "output" => $output]);
+// بررسی و حذف جلسه قبلی (اگر وجود دارد)
+exec("screen -list | grep $NAME", $output, $exists);
+if ($exists === 0) {
+    // تلاش برای حذف جلسه
+    exec("screen -X -S $NAME quit", $output, $status);
+    if ($status !== 0) {
+        error_log("خطا در حذف جلسه قبلی: $NAME");
+        sendResponse("error", "خطا در حذف جلسه قبلی.", ["session" => $NAME, "output" => $output]);
+    }
+} else {
+    // اگر جلسه وجود ندارد، فقط لاگ ثبت می‌شود و ادامه می‌دهیم
+    error_log("هیچ جلسه‌ای با نام $NAME پیدا نشد. جلسه جدید ایجاد خواهد شد.");
 }
 
 // ساخت دستور اجرای پروکسی
