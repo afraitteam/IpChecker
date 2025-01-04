@@ -1,0 +1,86 @@
+<?php
+header('Content-Type: application/json');
+
+// مقادیر پیش‌فرض
+define('DEFAULT_PORT', 4433);
+define('DEFAULT_SECRET', "00000000000000000000000000000000");
+define('DEFAULT_TAG', "aeb06f0c145f9e941ec4b0e782d7e600");
+define('DEFAULT_NAME', "MTProxy");
+define('PROXY_BIN_PATH', "/var/www/html/MTProxy/objs/bin/mtproto-proxy");
+define('PROXY_SECRET_PATH', "/var/www/html/MTProxy/objs/bin/proxy-secret");
+define('PROXY_CONFIG_PATH', "/var/www/html/MTProxy/objs/bin/proxy-multi.conf");
+
+// توابع کمکی
+function sendResponse($status, $message, $data = null) {
+    echo json_encode([
+        "status" => $status,
+        "message" => $message,
+        "data" => $data
+    ]);
+    exit;
+}
+
+// دریافت پارامترهای ورودی و اعتبارسنجی
+$PORT = isset($_GET["port"]) ? filter_var($_GET["port"], FILTER_VALIDATE_INT, ["options" => ["default" => DEFAULT_PORT, "min_range" => 1, "max_range" => 65535]]) : DEFAULT_PORT;
+$SECRET = isset($_GET["secret"]) ? preg_replace('/[^a-fA-F0-9]/', '', $_GET["secret"]) : DEFAULT_SECRET;
+$TAG = isset($_GET["tag"]) ? preg_replace('/[^a-fA-F0-9]/', '', $_GET["tag"]) : DEFAULT_TAG;
+$SLAVES = isset($_GET["slaves"]) ? filter_var($_GET["slaves"], FILTER_VALIDATE_INT, ["options" => ["default" => 0, "min_range" => 0]]) : 0;
+$NAME = isset($_GET["name"]) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $_GET["name"]) : DEFAULT_NAME;
+
+// دریافت IP‌های محلی و عمومی
+$LOCAL_IP = getHostByName(getHostName());
+$PUBLIC_IP = @file_get_contents("http://45.88.8.79:1234/ip");
+if (!$PUBLIC_IP) {
+    sendResponse("error", "دریافت IP عمومی با شکست مواجه شد.");
+}
+
+// حذف جلسه‌های قبلی
+exec("screen -X -S $NAME quit", $output, $status);
+if ($status !== 0) {
+    error_log("خطا در حذف جلسه قبلی: $NAME");
+    sendResponse("error", "خطا در حذف جلسه قبلی.", ["session" => $NAME, "output" => $output]);
+}
+
+// ساخت دستور اجرای پروکسی
+$cmd = sprintf(
+    "sudo %s -u nobody --aes-pwd %s %s -p 8893 -H %d -S %s -P %s -M %d --nat-info %s:%s",
+    escapeshellcmd(PROXY_BIN_PATH),
+    escapeshellarg(PROXY_SECRET_PATH),
+    escapeshellarg(PROXY_CONFIG_PATH),
+    $PORT,
+    $SECRET,
+    $TAG,
+    $SLAVES,
+    escapeshellarg($LOCAL_IP),
+    escapeshellarg($PUBLIC_IP)
+);
+
+// اضافه کردن دامنه‌ها در صورت وجود
+for ($i = 1; $i <= 11; $i++) {
+    if (isset($_GET["domain$i"])) {
+        $domain = filter_var($_GET["domain$i"], FILTER_SANITIZE_STRING);
+        if (!empty($domain)) {
+            $cmd .= " -D " . escapeshellarg($domain);
+        }
+    }
+}
+
+// اجرای دستور در یک Screen
+exec("screen -S $NAME -d -m $cmd", $output, $status);
+if ($status === 0) {
+    sendResponse("success", "پروکسی با موفقیت راه‌اندازی شد.", [
+        "session" => $NAME,
+        "port" => $PORT,
+        "secret" => $SECRET,
+        "tag" => $TAG,
+        "slaves" => $SLAVES,
+        "local_ip" => $LOCAL_IP,
+        "public_ip" => $PUBLIC_IP,
+        "domains" => array_filter(array_map(fn($i) => $_GET["domain$i"] ?? null, range(1, 11))),
+        "command" => $cmd
+    ]);
+} else {
+    error_log("خطا در اجرای دستور پروکسی: $cmd");
+    sendResponse("error", "اجرای پروکسی با شکست مواجه شد.", ["command" => $cmd, "output" => $output]);
+}
+?>
