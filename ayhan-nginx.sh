@@ -3,7 +3,7 @@
 # متغیرهای عمومی
 WEB_ROOT="/var/www/html"
 MT_PROXY_DIR="$WEB_ROOT/MTProxy"
-NGINX_CONF="/etc/nginx/sites-available/mtproxy"
+NGINX_CONF="/etc/nginx/sites-available/default"
 PHP_SCRIPT_URL="https://raw.githubusercontent.com/afraitteam/IpChecker/refs/heads/main/ayhan2"
 SYSTEM_USER="www-data"
 
@@ -25,7 +25,7 @@ echo "تنظیمات Nginx برای PHP..."
 cat > $NGINX_CONF <<EOF
 server {
     listen 80;
-    server_name _;
+    server_name _;  # تنظیم نام سرور (در صورت لزوم می‌توانید این را به دامنه خود تغییر دهید)
     root $WEB_ROOT;
 
     index index.php index.html index.htm;
@@ -93,4 +93,8 @@ chown $SYSTEM_USER:$SYSTEM_USER ayhan.php
 
 # پیام موفقیت
 echo "نصب و پیکربندی با موفقیت انجام شد."
-echo "برای دسترسی به MTProxy، فایل ayhan.php را در مرورگر باز کنید."
+
+# نمایش لینک دسترسی به فایل
+IP_ADDRESS=$(hostname -I | awk '{print $1}')  # دریافت IP محلی
+echo "برای دسترسی به MTProxy، فایل ayhan.php را در مرورگر باز کنید:"
+echo "http://$IP_ADDRESS/ayhan.php"
